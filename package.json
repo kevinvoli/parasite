@@ -1,0 +1,41 @@
+{
+  "name": "parasite-cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/cli/index.js",
+  "type": "module",
+  "bin": {
+    "parasite": "dist/cli/index.js"
+  },
+  "scripts": {
+    "dev": "node --loader ts-node/esm src/cli/index.ts",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/glob": "^9.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.3",
+    "@nestjs/core": "^11.1.3",
+    "@nestjs/typeorm": "^11.0.0",
+    "chalk": "^5.4.1",
+    "commander": "^14.0.0",
+    "fs-extra": "^11.3.0",
+    "glob": "^11.0.3",
+    "handlebars": "^4.7.8",
+    "inquirer": "^12.7.0",
+    "mysql": "^2.18.1",
+    "ora": "^8.2.0",
+    "pg": "^8.16.3",
+    "reflect-metadata": "^0.2.2",
+    "sqlite3": "^5.1.7",
+    "ts-morph": "^26.0.0",
+    "typeorm": "^0.3.25"
+  }
+}

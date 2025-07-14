@@ -1,0 +1,143 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, In } from 'typeorm';
+import { {{entityName}} } from './entities/{{entityFile}}.entity';
+import { Create{{entityName}}Dto } from './dto/create-{{entityFile}}.dto';
+import { Update{{entityName}}Dto } from './dto/update-{{entityFile}}.dto';
+{{#if hasRelations}}
+  {{#each relations}}
+import { {{Capitalise this}} } from '../{{this}}/entities/{{this}}.entity';
+  {{/each}}
+{{/if}}
+
+@Injectable()
+export class {{entityName}}Service {
+  constructor(
+    @InjectRepository({{entityName}})
+    private readonly {{entityFile}}Repository: Repository<{{entityName}}>{{#if hasRelations}},{{/if}}
+    {{#each relations}}
+    @InjectRepository({{Capitalise this}})
+    private readonly {{this}}Repository: Repository<{{Capitalise this}}>{{#unless @last}},{{/unless}}
+    {{/each}}
+  ) {}
+
+  async create(createDto: Create{{entityName}}Dto): Promise<{{entityName}}> {
+    {{#if hasRelations}}
+    const {
+      {{#each properties}}
+        {{#if isRelation}}
+          {{name}},
+        {{/if}}
+      {{/each}}
+      ...rest
+    } = createDto;
+
+    const entity = this.{{entityFile}}Repository.create(rest);
+
+    {{#each properties}}
+      {{#if (and isRelation (eq relationType "ManyToOne"))}}
+    if ({{name}}) {
+      entity.{{name}} = await this.{{name}}Repository.findOneBy({ id: {{name}} });
+    }
+      {{/if}}
+
+      {{#if (and isRelation (eq relationType "OneToMany"))}}
+    if ({{name}} !== undefined) {
+      entity.{{name}} = {{name}}.length > 0 ? await this.{{name}}Repository.findBy({ id: In({{name}}) }) : [];
+    }
+      {{/if}}
+    {{/each}}
+
+    return await this.{{entityFile}}Repository.save(entity);
+    {{else}}
+    const entity = this.{{entityFile}}Repository.create(createDto);
+    return await this.{{entityFile}}Repository.save(entity);
+    {{/if}}
+  }
+
+  async findAll(): Promise<{{entityName}}[]> {
+    return await this.{{entityFile}}Repository.find({
+      {{#if hasRelations}}
+      relations: [{{#each relations}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}],
+      {{/if}}
+    });
+  }
+
+  async findOne(id: number): Promise<{{entityName}}> {
+    const entity = await this.{{entityFile}}Repository.findOne({
+      where: { id },
+      {{#if hasRelations}}
+      relations: [{{#each relations}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}],
+      {{/if}}
+    });
+
+    if (!entity) {
+      throw new NotFoundException('{{entityName}} not found');
+    }
+
+    return entity;
+  }
+
+  async update(id: number, updateDto: Update{{entityName}}Dto): Promise<{{entityName}}> {
+    {{#if hasRelations}}
+    const {
+      {{#each properties}}
+        {{#if isRelation}}
+          {{name}},
+        {{/if}}
+      {{/each}}
+      ...rest
+    } = updateDto;
+
+    const entity = await this.{{entityFile}}Repository.findOne({
+      where: { id },
+      {{#if hasRelations}}
+      relations: { {{#each relations}}{{this}}: true{{#unless @last}}, {{/unless}}{{/each}} },
+      {{/if}}
+    });
+
+    if (!entity) {
+      throw new NotFoundException('{{entityName}} not found');
+    }
+
+    Object.assign(entity, rest);
+
+    {{#each properties}}
+      {{#if (and isRelation (eq relationType "ManyToOne"))}}
+    if ({{name}} !== undefined) {
+      entity.{{name}} = {{name}} ? await this.{{name}}Repository.findOneBy({ id: {{name}} }) : null;
+    }
+      {{/if}}
+
+      {{#if (and isRelation (eq relationType "OneToMany"))}}
+    if ({{name}} !== undefined) {
+      entity.{{name}} = {{name}}.length > 0 ? await this.{{name}}Repository.findBy({ id: In({{name}}) }) : [];
+    }
+      {{/if}}
+    {{/each}}
+
+    await this.{{entityFile}}Repository.save(entity);
+    return entity
+    {{else}}
+    await this.{{entityFile}}Repository.update(id, updateDto);
+    return this.findOne(id);
+    {{/if}}
+  }
+
+  async remove(id: number): Promise<void> {
+
+     const entity = await this.{{entityFile}}Repository.findOne({
+      where: { id },
+    });
+
+    if (!entity) {
+      throw new NotFoundException('{{entityName}} not found');
+    }
+
+
+    const result = await this.{{entityFile}}Repository.delete(entity.id);
+    if (result.affected === 0) {
+      throw new NotFoundException('{{entityName}} not found');
+    }
+  }
+}
