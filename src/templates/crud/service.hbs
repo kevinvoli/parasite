@@ -14,19 +14,21 @@ import { {{Capitalise this}} } from '../{{this}}/entities/{{this}}.entity';
 export class {{entityName}}Service {
   constructor(
     @InjectRepository({{entityName}})
-    private readonly {{entityFile}}Repository: Repository<{{entityName}}>{{#if hasRelations}},{{/if}}
-    {{#each relations}}
-    @InjectRepository({{Capitalise this}})
-    private readonly {{this}}Repository: Repository<{{Capitalise this}}>{{#unless @last}},{{/unless}}
+    private readonly {{entityFile}}Repository: Repository<{{entityName}}>{{#if hasRealRelations}},{{/if}}
+    {{#each properties}}
+      {{#if (and isRelation (not isJoinColumn))}}
+    @InjectRepository({{relatedEntity}})
+    private readonly {{relationFieldName}}Repository: Repository<{{relatedEntity}}>{{#unless @last}},{{/unless}}
+      {{/if}}
     {{/each}}
   ) {}
 
   async create(createDto: Create{{entityName}}Dto): Promise<{{entityName}}> {
     {{#if hasRelations}}
     const {
-      {{#each properties}}
-        {{#if isRelation}}
-          {{name}},
+       {{#each properties}}
+        {{#if (and isRelation (not isJoinColumn))}}
+          {{relationFieldName}}{{#if (eq relationType "ManyToOne")}}Id{{else}}Ids{{/if}},
         {{/if}}
       {{/each}}
       ...rest
@@ -34,17 +36,17 @@ export class {{entityName}}Service {
 
     const entity = this.{{entityFile}}Repository.create(rest);
 
-    {{#each properties}}
-      {{#if (and isRelation (eq relationType "ManyToOne"))}}
-    if ({{name}}) {
-      entity.{{name}} = await this.{{name}}Repository.findOneBy({ id: {{name}} });
+     {{#each properties}}
+      {{#if (and isRelation (not isJoinColumn))}}
+        {{#if (eq relationType "ManyToOne")}}
+    if ({{relationFieldName}}Id) {
+      entity.{{relationFieldName}} = await this.{{relationFieldName}}Repository.findOneBy({ id: {{relationFieldName}}Id });
     }
-      {{/if}}
-
-      {{#if (and isRelation (eq relationType "OneToMany"))}}
-    if ({{name}} !== undefined) {
-      entity.{{name}} = {{name}}.length > 0 ? await this.{{name}}Repository.findBy({ id: In({{name}}) }) : [];
+        {{else if (eq relationType "OneToMany")}}
+    if ({{relationFieldName}}Ids) {
+      entity.{{relationFieldName}} = await this.{{relationFieldName}}Repository.findBy({ id: In({{relationFieldName}}Ids) });
     }
+        {{/if}}
       {{/if}}
     {{/each}}
 
@@ -81,9 +83,9 @@ export class {{entityName}}Service {
   async update(id: number, updateDto: Update{{entityName}}Dto): Promise<{{entityName}}> {
     {{#if hasRelations}}
     const {
-      {{#each properties}}
-        {{#if isRelation}}
-          {{name}},
+{{#each properties}}
+        {{#if (and isRelation (not isJoinColumn))}}
+          {{relationFieldName}}{{#if (eq relationType "ManyToOne")}}Id{{else}}Ids{{/if}},
         {{/if}}
       {{/each}}
       ...rest

@@ -2,7 +2,7 @@ export class Create{{entityName}}Dto {
   {{#each properties}}
   {{#unless isPrimary}}
   {{#if (and isRelation (eq relationType "ManyToOne"))}}
-  {{name}}Id{{#if isOptional}}?{{/if}}: number;
+  {{name}}{{#if isOptional}}?{{/if}}: number;
   {{else if (and isRelation (eq relationType "OneToMany"))}}
   {{name}}Ids{{#if isOptional}}?{{/if}}: number[];
   {{else}}

@@ -1,0 +1,58 @@
+import {
+{{#each typeormImports}}
+  {{this}},
+{{/each}}
+} from "typeorm";
+
+{{#each properties}}
+  {{#if isRelation}}
+import { {{relatedEntity}} } from "../../{{kebabCase relatedEntity}}/entities/{{kebabCase relatedEntity}}.entity";
+  {{/if}}
+{{/each}}
+
+@Entity("{{entityFile}}")
+export class {{entityName}} {
+{{#each properties}}
+  {{#if isPrimary}}
+  @PrimaryGeneratedColumn("increment")
+  {{name}}: number;
+
+  {{else if isRelation}}
+    {{#if (eq relationType "ManyToOne")}}
+  @Column({ name: "{{joinColumnName}}", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
+  {{joinColumnName}}: number;
+
+  @ManyToOne(() => {{relatedEntity}}, {{camelCase relatedEntity}} => {{camelCase relatedEntity}}.{{camelCase inverseSide}})
+  @JoinColumn({ name: "{{joinColumnName}}", referencedColumnName: "id" })
+  {{relationFieldName}}: {{relatedEntity}};
+
+    {{else if (eq relationType "OneToMany")}}
+  @OneToMany(() => {{relatedEntity}}, {{camelCase relatedEntity}} => {{camelCase relatedEntity}}.{{camelCase inverseSide}})
+  {{relationFieldName}}: {{relatedEntity}}[];
+    {{/if}}
+
+  {{else if (eq type "Date")}}
+    {{#if (eq name "created_at")}}
+  @CreateDateColumn({ type: "timestamp", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
+  {{name}}: Date;
+
+    {{else if (eq name "updated_at")}}
+  @UpdateDateColumn({ type: "timestamp", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
+  {{name}}: Date;
+
+    {{else if (eq name "delected_at")}}
+  @DeleteDateColumn({ type: "timestamp", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
+  {{name}}: Date;
+
+    {{else}}
+  @Column({ type: "timestamp", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
+  {{name}}: Date;
+    {{/if}}
+
+  {{else}}
+  @Column({ type: "{{lowercase type}}", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
+  {{name}}: {{type}};
+  {{/if}}
+
+{{/each}}
+}

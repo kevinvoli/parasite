@@ -9,6 +9,7 @@ firebase-debug.*.log*
 
 # Firebase cache
 .firebase/
+parasite-app/
 
 # Firebase config
 

@@ -7,6 +7,7 @@ import { generateCrudResources } from "../generators/crud-generator.js";
 import { generateMissingCrudElements } from "../generators/intelligent-generator.js";
 import { addModuleToAppModule } from "../utils/app-module-updater.js";
 import path from "path";
+import { generateFromDatabase } from "../generators/generate-from-db.js";
 
 
 const program = new Command();
@@ -51,7 +52,16 @@ program
 
 program 
   .command("db")
-  .description("Génére un projet (")
+  .description("Génére un projet (ou le complète à partir d'une base de données")
+  .requiredOption("-d, --db-url <url>", "URL da la base de données (ex:  postgres://user:pass@localhost:5432/db)")
+  .option("-o, --output <dir>", "Répertoire de sortie (par défaut: ./parasite-app )","./parasite-app")
+  .action(async (options)=>{
+    console.log(chalk.green(">> Connexion à la base de donnée..."));
+    console.log("Option : ", options);
+
+    await generateFromDatabase(options.dbUrl, options.output);
+  })
+
 
 
 program.parse();

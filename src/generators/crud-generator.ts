@@ -28,7 +28,7 @@ function kebabCase(str: string): string {
 export async function generateCrudResources(
   entity: EnrichedEntity,
   outputBase: string,
-  filesToGenerate: string[] = ["controller", "service", "module", "create-dto", "update-dto"]) {
+  filesToGenerate: string[] = ["controller", "service", "module", "create-dto", "update-dto", "entity"]) {
 
   const entityName = entity.name;
   const entityFile = kebabCase(entityName);
@@ -37,8 +37,40 @@ export async function generateCrudResources(
 
   const outputDir = path.join(outputBase);
   const dtoDir = path.join(outputDir, "dto");
+  const entitiesDir = path.join(outputDir, "entities");
 
   await fs.ensureDir(dtoDir);
+  await fs.ensureDir(entitiesDir);
+
+
+
+  const typeormImports = new Set<string>(["Entity", "PrimaryGeneratedColumn"]);
+
+
+  for (const prop of entity.properties) {
+    if (prop.type === "Date") {
+      typeormImports.add("CreateDateColumn");
+      typeormImports.add("UpdateDateColumn");
+      typeormImports.add("DeleteDateColumn");
+    }
+
+    if (prop.isRelation) {
+      if (prop.relationType === "ManyToOne") {
+        typeormImports.add("ManyToOne");
+        typeormImports.add("JoinColumn");
+      }
+      if (prop.relationType === "OneToMany") {
+        typeormImports.add("OneToMany");
+      }
+    }
+
+    // Par défaut, tous les champs non-relation ont un @Column
+    if (!prop.isRelation && !prop.isPrimary) {
+      typeormImports.add("Column");
+    }
+  }
+
+
 
 
   const context = {
@@ -46,6 +78,7 @@ export async function generateCrudResources(
     entityFile,
     entityVar,
     route,
+     typeormImports: Array.from(typeormImports),
     properties: entity.properties,
     relations: entity.relations,
     hasRelations: entity.hasRelations,
@@ -58,6 +91,7 @@ export async function generateCrudResources(
     { name: `${entityFile}.module.ts`, template: "module" },
     { name: `dto/create-${entityFile}.dto.ts`, template: "create-dto" },
     { name: `dto/update-${entityFile}.dto.ts`, template: "update-dto" },
+    { name: `entities/${entityFile}.entity.ts`, template: "entity" },
   ]
 
   const files = allFiles.filter(f => filesToGenerate.includes(f.template))

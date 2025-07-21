@@ -7,12 +7,18 @@ import getAllTsFilesRecursively from "../utils/reccurcive.js";
 export interface EntityProperty {
   name: string;
   type: string;
+  dtoType: string;
   isPrimary: boolean;
+  isOptional: boolean;
   isRelation: boolean;
-  relationType?: string;
+ isJoinColumn?: boolean;
   relatedEntity?: string;
-  dtoType?: string;
-  isOptional?: boolean;
+  relationType?: string;
+  relationFieldName?: string;
+  joinColumnName?: string;
+  onDelete?: string;
+  orphanedRowAction?: string;
+  inverseSide?: string; // exemple : products (depuis Category)
 }
 
 export interface ParsedEntity {
@@ -103,6 +109,7 @@ for (const filePath of files) {
         relatedEntity,
         dtoType,
         isOptional,
+    
       });
     }
 
