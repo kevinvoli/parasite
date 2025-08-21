@@ -2,30 +2,7 @@ import { Project, SyntaxKind } from "ts-morph";
 import path from "path";
 import fs from "fs";
 import getAllTsFilesRecursively from "../utils/reccurcive.js";
-
-
-export interface EntityProperty {
-  name: string;
-  type: string;
-  dtoType: string;
-  isPrimary: boolean;
-  isOptional: boolean;
-  isRelation: boolean;
- isJoinColumn?: boolean;
-  relatedEntity?: string;
-  relationType?: string;
-  relationFieldName?: string;
-  joinColumnName?: string;
-  onDelete?: string;
-  orphanedRowAction?: string;
-  inverseSide?: string; // exemple : products (depuis Category)
-}
-
-export interface ParsedEntity {
-  name: string;
-  filePath: string;
-  properties: EntityProperty[];
-}
+import { ParsedEntity, EntityProperty } from "../types.js";
 
 export async function scanEntities(entitiesDir: string): Promise<ParsedEntity[]> {
   const project = new Project({

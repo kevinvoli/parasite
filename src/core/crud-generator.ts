@@ -2,7 +2,7 @@ import fs from "fs-extra";
 import path from "path";
 import Handlebars from "../handlebars/handlebars-helpers.js";
 import { kebabCase } from "../utils/string-formatters.js";
-import { EntityProperty, ParsedEntity } from "./entity-scanner.js";
+import { EntityProperty, ParsedEntity } from "../types.js";
 
 
 interface EnrichedEntity extends ParsedEntity {

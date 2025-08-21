@@ -1,21 +1,12 @@
 import { execSync } from "child_process";
 import fs from "fs-extra";
 import path from "path";
-import mysql from "mysql2/promise";
 import chalk from "chalk";
-
 import { generateCrudResources } from "./crud-generator.js";
-import { ParsedEntity, EntityProperty } from "./entity-scanner.js";
-import { camelCase, kebabCase, toPascalCase } from "../utils/string-formatters.js";
-
-function mapMySQLTypeToTS(mysqlType: string): string {
-  const type = mysqlType.toLowerCase();
-  if (type.includes("int") || type.includes("decimal") || type.includes("float") || type.includes("double")) return "number";
-  if (type.includes("char") || type.includes("text") || type.includes("enum")) return "string";
-  if (type.includes("date") || type.includes("time")) return "Date";
-  if (type.includes("bool") || type === "tinyint(1)") return "boolean";
-  return "any";
-}
+import { DatabaseScanner } from "./db-scanner.js";
+import { MySqlScanner } from "./mysql-scanner.js";
+import { PostgresScanner } from "./postgres-scanner.js";
+import { kebabCase } from "../utils/string-formatters.js";
 
 function isNestInstalled(): boolean {
   try {
@@ -26,11 +17,21 @@ function isNestInstalled(): boolean {
   }
 }
 
-export async function generateFromDatabase(dbUrl: string, outputDir: string = "parasite-app") {
-  console.log(chalk.green(">> Connexion à la base de donnée..."));
+function getDbScanner(dbUrl: string): DatabaseScanner {
+  if (dbUrl.startsWith("mysql://")) {
+    return new MySqlScanner();
+  }
+  if (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://")) {
+    return new PostgresScanner();
+  }
+  throw new Error(`Unsupported database type for URL: ${dbUrl}. Only mysql:// and postgres:// are supported.`);
+}
+
+export async function generateFromDatabase(dbUrl: string, outputDir: string) {
   const projectPath = path.resolve(outputDir);
   const srcDir = path.join(projectPath, "src");
 
+  // 1. Create NestJS project if it doesn't exist
   if (!fs.existsSync(projectPath)) {
     if (!isNestInstalled()) {
       console.error(chalk.red("❌ Le CLI NestJS n'est pas installé. Veuillez exécuter : npm i -g @nestjs/cli"));
@@ -39,143 +40,41 @@ export async function generateFromDatabase(dbUrl: string, outputDir: string = "p
     console.log(chalk.blue(`📦 Création du projet NestJS dans ${outputDir}...`));
     execSync(`nest new ${outputDir} --skip-install`, { stdio: "inherit" });
   } else {
-    console.log(chalk.yellow(`⚠️ Le dossier ${outputDir} existe déjà.`));
+    console.log(chalk.yellow(`⚠️ Le dossier ${outputDir} existe déjà. Utilisation du projet existant.`));
   }
 
-  const connection = await mysql.createConnection(dbUrl);
-  const [tables] = await connection.query<any>("SHOW TABLES");
-  if (!tables || tables.length === 0) throw new Error("❌ Aucune table trouvée dans la base de données.");
+  try {
+    // 2. Introspect the database schema
+    console.log(chalk.blue("🔎 Introspection de la base de données..."));
+    const scanner = getDbScanner(dbUrl);
+    const entities = await scanner.introspect(dbUrl, outputDir);
 
-  const tableKey = Object.keys(tables[0])[0];
-  const tableNames: string[] = tables.map((row: any) => row[tableKey]);
-  const inverseRelations = new Map<string, EntityProperty[]>();
+    if (entities.length === 0) {
+        console.log(chalk.yellow("Aucune table n'a été trouvée dans la base de données."));
+        return;
+    }
+    console.log(chalk.cyan(`🗂️  ${entities.length} tables trouvées. Début de la génération du CRUD...`));
 
-   const allEntities: Record<string, ParsedEntity> = {};
+    // 3. Generate CRUD files for each entity
+    for (const entity of entities) {
+      const baseDir = path.join(srcDir, kebabCase(entity.name));
+      console.log(chalk.green(`\n>> Génération des fichiers CRUD pour ${entity.name}`));
 
-  for (const tableName of tableNames) {
-    const [columns] = await connection.query<any>(`SHOW COLUMNS FROM \`${tableName}\``);
-    const [foreignKeys] = await connection.query<any>(
-      `SELECT COLUMN_NAME, REFERENCED_TABLE_NAME 
-       FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = ? 
-       AND REFERENCED_TABLE_NAME IS NOT NULL`,
-      [tableName]
-    );
-
-    const className = toPascalCase(tableName);
-    const properties: EntityProperty[] = [];
-
-    for (const col of columns) {
-      const type = mapMySQLTypeToTS(col.Type);
-      const isPrimary = col.Key === "PRI";
-      const isOptional = col.Null === "YES";
-
-      const fk = foreignKeys.find((fk: any) => fk.COLUMN_NAME === col.Field);
-      if (fk) {
-        // Relation ManyToOne
-        const relatedEntity = toPascalCase(fk.REFERENCED_TABLE_NAME);
-        const relationName = camelCase(fk.REFERENCED_TABLE_NAME);
-
-         properties.push({
-      name: camelCase(col.Field),
-      type,
-      dtoType: "number",
-      isPrimary,
-      isOptional,
-      isRelation: false,
-      isJoinColumn: true,
-      joinColumnName: col.Field,
-    });
-        
-        properties.push({
-          name: camelCase(col.Field),
-          type,
-          dtoType: type === "Date" ? "string" : type,
-          isPrimary,
-          isOptional,
-          isRelation: true,
-          isJoinColumn: false,
-          relatedEntity,
-          relationType: "ManyToOne",
-          relationFieldName: relationName,
-          inverseSide: camelCase(tableName),
-          joinColumnName: col.Field,
-        });
-      } else {
-        // Champ normal
-        properties.push({
-          name: camelCase(col.Field),
-          type,
-          dtoType: type === "Date" ? "string" : type,
-          isPrimary,
-          isOptional,
-          isRelation: false,
-           isJoinColumn: false,
-           joinColumnName: col.Field,
-        });
-      }
+      await generateCrudResources(
+        {
+          ...entity,
+          relations: entity.properties.filter(p => p.isRelation).map(p => p.name),
+          hasRelations: entity.properties.some(p => p.isRelation),
+          optionalProperties: entity.properties.filter(p => p.isOptional),
+          dateProperties: entity.properties.filter(p => p.type === "Date"),
+        },
+        baseDir
+      );
     }
 
-    allEntities[tableName] = {
-      name: className,
-      filePath: path.join(srcDir, tableName, `${kebabCase(className)}.entity.ts`),
-      properties,
-    };
+    console.log(chalk.green("\n✅ Génération terminée avec succès !"));
+  } catch (error: any) {
+      console.error(chalk.red(`\n❌ Une erreur est survenue: ${error.message}`));
+      process.exit(1);
   }
-
-  // Deuxième passe: ajouter les relations inverses OneToMany
-  for (const tableName of tableNames) {
-    const entity = allEntities[tableName];
-    
-    // Trouver toutes les relations ManyToOne qui pointent vers cette table
-    for (const otherTableName of tableNames) {
-      if (otherTableName === tableName) continue;
-      
-      const otherEntity = allEntities[otherTableName];
-      for (const prop of otherEntity.properties) {
-        if (prop.isRelation && 
-            prop.relationType === "ManyToOne" && 
-            prop.relatedEntity === entity.name) {
-          
-          // Créer la relation inverse OneToMany
-          const inverseProp: EntityProperty = {
-            name: camelCase(otherTableName) , // Pluralisation
-            type: `${otherEntity.name}[]`,
-            isPrimary: false,
-            isOptional: true,
-            isRelation: true,
-            relationType: "OneToMany",
-            relatedEntity: otherEntity.name,
-            relationFieldName: camelCase(otherTableName) ,
-            inverseSide: entity.name,
-            joinColumnName: prop.joinColumnName,
-            dtoType: "number",
-          };
-
-          entity.properties.push(inverseProp);
-        }
-      }
-    }
-  }
-
-  // Génération finale des fichiers
-  for (const tableName of tableNames) {
-    const entity = allEntities[tableName];
-    const baseDir = path.join(srcDir, tableName);
-    
-    await generateCrudResources(
-      {
-        ...entity,
-        relations: entity.properties.filter(p => p.isRelation).map(p => p.name),
-        hasRelations: entity.properties.some(p => p.isRelation),
-        optionalProperties: entity.properties.filter(p => p.isOptional),
-        dateProperties: entity.properties.filter(p => p.type === "Date"),
-      },
-      baseDir
-    );
-  }
-
-  await connection.end();
-  console.log(chalk.green("\n✅ Génération terminée avec succès !"));
 }

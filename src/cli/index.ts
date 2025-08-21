@@ -52,6 +52,34 @@ program
   });
 
 program
+  .command("clean")
+  .description("Supprime les fichiers générés (dist, parasite.conf.json)")
+  .action(async () => {
+    const distPath = path.resolve(process.cwd(), "dist");
+    const configFilePath = path.resolve(process.cwd(), "parasite.conf.json");
+
+    console.log(chalk.blue("Nettoyage des fichiers générés..."));
+
+    try {
+      await fs.remove(distPath);
+      console.log(chalk.green("✅ Dossier `dist` supprimé."));
+    } catch (error) {
+      console.error(chalk.red("❌ Erreur lors de la suppression du dossier `dist` :"), error);
+    }
+
+    try {
+      if (fs.existsSync(configFilePath)) {
+        await fs.remove(configFilePath);
+        console.log(chalk.green("✅ Fichier `parasite.conf.json` supprimé."));
+      }
+    } catch (error) {
+      console.error(chalk.red("❌ Erreur lors de la suppression de `parasite.conf.json` :"), error);
+    }
+
+    console.log(chalk.green("\nNettoyage terminé !"));
+  });
+
+program
   .command("generate")
   .description("Génère les modules, services, contrôleurs et DTOs depuis les entités")
   .option("-p, --project <path>", "Chemin vers le projet NestJS")

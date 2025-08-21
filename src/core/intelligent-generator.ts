@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "fs-extra";
-import { ParsedEntity } from "./entity-scanner.js";
+import { ParsedEntity } from "../types.js";
 import { generateCrudResources } from "./crud-generator.js";
 import { kebabCase } from "../utils/string-formatters.js";
 
