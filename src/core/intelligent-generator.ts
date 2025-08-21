@@ -1,8 +1,8 @@
 import path from "path";
-
 import fs from "fs-extra";
-import { ParsedEntity } from "../scanner/entity-scanner.js";
+import { ParsedEntity } from "./entity-scanner.js";
 import { generateCrudResources } from "./crud-generator.js";
+import { kebabCase } from "../utils/string-formatters.js";
 
 function fileExists(filePath: string): boolean {
   return fs.existsSync(filePath);
@@ -48,15 +48,6 @@ export async function generateMissingCrudElements(entity: ParsedEntity, projectR
   const dateProperties = entity.properties.filter((p) => p.type === "Date");
   const optionalProperties = entity.properties.filter((p) => p.isOptional);
 
-console.log("mon entite ", {
-    ...entity,
-    relations,
-    hasRelations,
-    dateProperties,
-    optionalProperties,
-  },);
-
-
   await generateCrudResources(
   {
     ...entity,
@@ -69,9 +60,5 @@ console.log("mon entite ", {
   filesToGenerate
 );
 
-}
-
-function kebabCase(str: string): string {
-  return str.replace(/[A-Z]/g, (match, offset) => (offset ? "-" : "") + match.toLowerCase());
 }
 

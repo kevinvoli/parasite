@@ -118,8 +118,6 @@ for (const filePath of files) {
       filePath,
       properties,
     });
-
-    console.log("ma propriete:", entities[0].properties);
     
   }
 

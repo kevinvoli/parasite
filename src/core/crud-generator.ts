@@ -1,9 +1,8 @@
 import fs from "fs-extra";
 import path from "path";
 import Handlebars from "../handlebars/handlebars-helpers.js";
-
-
-import { EntityProperty, ParsedEntity } from "../scanner/entity-scanner.js";
+import { kebabCase } from "../utils/string-formatters.js";
+import { EntityProperty, ParsedEntity } from "./entity-scanner.js";
 
 
 interface EnrichedEntity extends ParsedEntity {
@@ -19,10 +18,6 @@ function compileTemplate(templateName: string, data: any): string {
   const templateSource = fs.readFileSync(templatePath, "utf8");
   const template = Handlebars.compile(templateSource);
   return template(data);
-}
-
-function kebabCase(str: string): string {
-  return str.replace(/[A-Z]/g, (match, offset) => (offset ? '-' : '') + match.toLowerCase());
 }
 
 export async function generateCrudResources(

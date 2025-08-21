@@ -5,21 +5,8 @@ import mysql from "mysql2/promise";
 import chalk from "chalk";
 
 import { generateCrudResources } from "./crud-generator.js";
-import { ParsedEntity, EntityProperty } from "../scanner/entity-scanner.js";
-
-function camelCase(str: string): string {
-  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-}
-
-function kebabCase(str: string): string {
-  return str.replace(/[A-Z]/g, (match, offset) => (offset ? "-" : "") + match.toLowerCase());
-}
-
-function toPascalCase(str: string): string {
-  return str
-    .replace(/_./g, (s) => s.charAt(1).toUpperCase())
-    .replace(/^./, (s) => s.toUpperCase());
-}
+import { ParsedEntity, EntityProperty } from "./entity-scanner.js";
+import { camelCase, kebabCase, toPascalCase } from "../utils/string-formatters.js";
 
 function mapMySQLTypeToTS(mysqlType: string): string {
   const type = mysqlType.toLowerCase();
