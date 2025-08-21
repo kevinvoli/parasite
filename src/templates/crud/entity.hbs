@@ -24,7 +24,7 @@ export class {{entityName}} {
 
   @ManyToOne(() => {{relatedEntity}}, {{camelCase relatedEntity}} => {{camelCase relatedEntity}}.{{camelCase inverseSide}})
   @JoinColumn({ name: "{{joinColumnName}}", referencedColumnName: "id" })
-  {{relationFieldName}}: {{relatedEntity}};
+  {{relationFieldName}}: {{relatedEntity}} | null;
 
     {{else if (eq relationType "OneToMany")}}
   @OneToMany(() => {{relatedEntity}}, {{camelCase relatedEntity}} => {{camelCase relatedEntity}}.{{camelCase inverseSide}})

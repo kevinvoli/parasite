@@ -1,8 +1,8 @@
 import Handlebars from "handlebars";
 import { camelCase } from "typeorm/util/StringUtils.js";
 // Opérateurs logiques
-
 Handlebars.registerHelper("eq", (a: any, b: any) => a === b);
+Handlebars.registerHelper("neq", (a: any, b: any) => a !== b);
 Handlebars.registerHelper("ne", (a: any, b: any) => a !== b);
 Handlebars.registerHelper("and", (a: any, b: any) => a && b);
 Handlebars.registerHelper("or", (a: any, b: any) => a || b);

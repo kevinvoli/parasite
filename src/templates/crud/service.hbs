@@ -4,17 +4,17 @@ import { Repository, In } from 'typeorm';
 import { {{entityName}} } from './entities/{{entityFile}}.entity';
 import { Create{{entityName}}Dto } from './dto/create-{{entityFile}}.dto';
 import { Update{{entityName}}Dto } from './dto/update-{{entityFile}}.dto';
-{{#if hasRelations}}
-  {{#each relations}}
-import { {{Capitalise this}} } from '../{{this}}/entities/{{this}}.entity';
-  {{/each}}
-{{/if}}
+{{#each properties}}
+  {{#if isRelation}}
+import { {{relatedEntity}} } from "../{{kebabCase relatedEntity}}/entities/{{kebabCase relatedEntity}}.entity";
+  {{/if}}
+{{/each}}
 
 @Injectable()
 export class {{entityName}}Service {
-  constructor(
+   constructor(
     @InjectRepository({{entityName}})
-    private readonly {{entityFile}}Repository: Repository<{{entityName}}>{{#if hasRealRelations}},{{/if}}
+    private readonly {{entityFile}}Repository: Repository<{{entityName}}>{{#if hasRelations}},{{/if}}
     {{#each properties}}
       {{#if (and isRelation (not isJoinColumn))}}
     @InjectRepository({{relatedEntity}})

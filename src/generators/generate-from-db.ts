@@ -89,6 +89,17 @@ export async function generateFromDatabase(dbUrl: string, outputDir: string = "p
         // Relation ManyToOne
         const relatedEntity = toPascalCase(fk.REFERENCED_TABLE_NAME);
         const relationName = camelCase(fk.REFERENCED_TABLE_NAME);
+
+         properties.push({
+      name: camelCase(col.Field),
+      type,
+      dtoType: "number",
+      isPrimary,
+      isOptional,
+      isRelation: false,
+      isJoinColumn: true,
+      joinColumnName: col.Field,
+    });
         
         properties.push({
           name: camelCase(col.Field),
@@ -97,6 +108,7 @@ export async function generateFromDatabase(dbUrl: string, outputDir: string = "p
           isPrimary,
           isOptional,
           isRelation: true,
+          isJoinColumn: false,
           relatedEntity,
           relationType: "ManyToOne",
           relationFieldName: relationName,
@@ -112,7 +124,7 @@ export async function generateFromDatabase(dbUrl: string, outputDir: string = "p
           isPrimary,
           isOptional,
           isRelation: false,
-           isJoinColumn: true,
+           isJoinColumn: false,
            joinColumnName: col.Field,
         });
       }

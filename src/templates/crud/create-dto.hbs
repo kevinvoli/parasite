@@ -1,13 +1,17 @@
 export class Create{{entityName}}Dto {
   {{#each properties}}
-  {{#unless isPrimary}}
-  {{#if (and isRelation (eq relationType "ManyToOne"))}}
-  {{name}}{{#if isOptional}}?{{/if}}: number;
-  {{else if (and isRelation (eq relationType "OneToMany"))}}
-  {{name}}Ids{{#if isOptional}}?{{/if}}: number[];
-  {{else}}
+    {{#unless isPrimary}}
+      {{#unless isJoinColumn}}
+        {{#if isRelation}}
+          {{#if (eq relationType "ManyToOne")}}
+  {{relationFieldName}}Id{{#if isOptional}}?{{/if}}: number;
+          {{else if (eq relationType "OneToMany")}}
+  {{relationFieldName}}Ids{{#if isOptional}}?{{/if}}: number[];
+          {{/if}}
+        {{else}}
   {{name}}{{#if isOptional}}?{{/if}}: {{dtoType}};
-  {{/if}}
-  {{/unless}}
+        {{/if}}
+      {{/unless}}
+    {{/unless}}
   {{/each}}
 }
