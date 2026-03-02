@@ -29,6 +29,32 @@ export class {{entityName}} {
     {{else if (eq relationType "OneToMany")}}
   @OneToMany(() => {{relatedEntity}}, {{camelCase relatedEntity}} => {{camelCase relatedEntity}}.{{camelCase inverseSide}})
   {{relationFieldName}}: {{relatedEntity}}[];
+
+    {{else if (eq relationType "OneToOne")}}
+      {{#if isOwningRelation}}
+  @Column({ name: "{{joinColumnName}}", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
+  {{joinColumnName}}: number;
+
+  @OneToOne(() => {{relatedEntity}}, {{camelCase relatedEntity}} => {{camelCase relatedEntity}}.{{camelCase inverseSide}})
+  @JoinColumn({ name: "{{joinColumnName}}" })
+  {{relationFieldName}}: {{relatedEntity}} | null;
+
+      {{else}}
+  @OneToOne(() => {{relatedEntity}}, {{camelCase relatedEntity}} => {{camelCase relatedEntity}}.{{camelCase inverseSide}})
+  {{relationFieldName}}: {{relatedEntity}} | null;
+
+      {{/if}}
+    {{else if (eq relationType "ManyToMany")}}
+      {{#if isOwningRelation}}
+  @ManyToMany(() => {{relatedEntity}}, {{camelCase relatedEntity}} => {{camelCase relatedEntity}}.{{camelCase inverseSide}})
+  @JoinTable({ name: "{{joinTableName}}", joinColumn: { name: "{{joinColumnName}}" }, inverseJoinColumn: { name: "{{inverseJoinColumnName}}" } })
+  {{relationFieldName}}: {{relatedEntity}}[];
+
+      {{else}}
+  @ManyToMany(() => {{relatedEntity}}, {{camelCase relatedEntity}} => {{camelCase relatedEntity}}.{{camelCase inverseSide}})
+  {{relationFieldName}}: {{relatedEntity}}[];
+
+      {{/if}}
     {{/if}}
 
   {{else if (eq type "Date")}}
@@ -40,7 +66,7 @@ export class {{entityName}} {
   @UpdateDateColumn({ type: "timestamp", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
   {{name}}: Date;
 
-    {{else if (eq name "delected_at")}}
+    {{else if (eq name "deleted_at")}}
   @DeleteDateColumn({ type: "timestamp", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
   {{name}}: Date;
 

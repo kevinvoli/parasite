@@ -57,6 +57,18 @@ export async function generateCrudResources(
       if (prop.relationType === "OneToMany") {
         typeormImports.add("OneToMany");
       }
+      if (prop.relationType === "OneToOne") {
+        typeormImports.add("OneToOne");
+        if (prop.isOwningRelation) {
+          typeormImports.add("JoinColumn");
+        }
+      }
+      if (prop.relationType === "ManyToMany") {
+        typeormImports.add("ManyToMany");
+        if (prop.isOwningRelation) {
+          typeormImports.add("JoinTable");
+        }
+      }
     }
 
     // Par défaut, tous les champs non-relation ont un @Column

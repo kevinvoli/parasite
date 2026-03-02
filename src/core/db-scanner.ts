@@ -1,5 +1,5 @@
 import { ParsedEntity } from "../types.js";
 
 export interface DatabaseScanner {
-  introspect(dbUrl: string): Promise<ParsedEntity[]>;
+  introspect(dbUrl: string, outputDir: string): Promise<ParsedEntity[]>;
 }

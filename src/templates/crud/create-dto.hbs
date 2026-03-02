@@ -3,9 +3,9 @@ export class Create{{entityName}}Dto {
     {{#unless isPrimary}}
       {{#unless isJoinColumn}}
         {{#if isRelation}}
-          {{#if (eq relationType "ManyToOne")}}
+          {{#if (or (eq relationType "ManyToOne") (and (eq relationType "OneToOne") isOwningRelation))}}
   {{relationFieldName}}Id{{#if isOptional}}?{{/if}}: number;
-          {{else if (eq relationType "OneToMany")}}
+          {{else if (or (eq relationType "OneToMany") (and (eq relationType "ManyToMany") isOwningRelation))}}
   {{relationFieldName}}Ids{{#if isOptional}}?{{/if}}: number[];
           {{/if}}
         {{else}}

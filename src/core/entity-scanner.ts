@@ -82,7 +82,7 @@ for (const filePath of files) {
         type,
         isPrimary,
         isRelation,
-        relationType,
+        relationType: relationType as "OneToMany" | "ManyToOne" | "OneToOne" | "ManyToMany" | undefined,
         relatedEntity,
         dtoType,
         isOptional,
@@ -92,6 +92,7 @@ for (const filePath of files) {
 
     entities.push({
       name: className,
+      originalTableName: className.toLowerCase(),
       filePath,
       properties,
     });
