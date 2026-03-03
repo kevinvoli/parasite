@@ -11,6 +11,7 @@ module.exports = {
   },
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
-    '^mysql2/promise$': '<rootDir>/src/__mocks__/mysql2/promise.js', // NEW
+    '^mysql2/promise$': '<rootDir>/src/__mocks__/mysql2/promise.js',
+    '^pg$': '<rootDir>/src/__mocks__/pg/index.js',
   },
 };

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In{{#if hasRelations}}, DataSource{{/if}} } from 'typeorm';
 import { {{entityName}} } from './entities/{{entityFile}}.entity';
 import { Create{{entityName}}Dto } from './dto/create-{{entityFile}}.dto';
 import { Update{{entityName}}Dto } from './dto/update-{{entityFile}}.dto';
@@ -23,6 +23,9 @@ export class {{entityName}}Service {
         {{/if}}
       {{/if}}
     {{/each}}
+    {{#if hasRelations}}
+    private readonly dataSource: DataSource,
+    {{/if}}
   ) {}
 
   async create(createDto: Create{{entityName}}Dto): Promise<{{entityName}}> {
@@ -40,34 +43,42 @@ export class {{entityName}}Service {
       ...rest
     } = createDto;
 
-    const entity = this.{{entityFile}}Repository.create(rest);
+    return await this.dataSource.transaction(async (manager) => {
+      const entity = manager.create({{entityName}}, rest);
 
-    {{#each properties}}
-      {{#if (and isRelation (not isJoinColumn))}}
-        {{#if (or (eq relationType "ManyToOne") (and (eq relationType "OneToOne") isOwningRelation))}}
-    if ({{relationFieldName}}Id) {
-      entity.{{relationFieldName}} = await this.{{relationFieldName}}Repository.findOneBy({ id: {{relationFieldName}}Id });
-    }
-        {{else if (or (eq relationType "OneToMany") (and (eq relationType "ManyToMany") isOwningRelation))}}
-    if ({{relationFieldName}}Ids) {
-      entity.{{relationFieldName}} = await this.{{relationFieldName}}Repository.findBy({ id: In({{relationFieldName}}Ids) });
-    }
+      {{#each properties}}
+        {{#if (and isRelation (not isJoinColumn))}}
+          {{#if (or (eq relationType "ManyToOne") (and (eq relationType "OneToOne") isOwningRelation))}}
+      if ({{relationFieldName}}Id) {
+        entity.{{relationFieldName}} = await manager.findOneBy({{relatedEntity}}, { id: {{relationFieldName}}Id });
+      }
+          {{else if (or (eq relationType "OneToMany") (and (eq relationType "ManyToMany") isOwningRelation))}}
+      if ({{relationFieldName}}Ids) {
+        entity.{{relationFieldName}} = await manager.find({{relatedEntity}}, { where: { id: In({{relationFieldName}}Ids) } });
+      }
+          {{/if}}
         {{/if}}
-      {{/if}}
-    {{/each}}
+      {{/each}}
 
-    return await this.{{entityFile}}Repository.save(entity);
+      return await manager.save(entity);
+    });
     {{else}}
     const entity = this.{{entityFile}}Repository.create(createDto);
     return await this.{{entityFile}}Repository.save(entity);
     {{/if}}
   }
 
-  async findAll(): Promise<{{entityName}}[]> {
-    return await this.{{entityFile}}Repository.find({
+  async findAll(pagination?: { page?: number; limit?: number }): Promise<[{{entityName}}[], number]> {
+    const page = pagination?.page ?? 1;
+    const limit = Math.min(pagination?.limit ?? 20, 100);
+    const skip = (page - 1) * limit;
+
+    return await this.{{entityFile}}Repository.findAndCount({
       {{#if hasRelations}}
       relations: [{{#each relations}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}],
       {{/if}}
+      skip,
+      take: limit,
     });
   }
 
@@ -101,35 +112,35 @@ export class {{entityName}}Service {
       ...rest
     } = updateDto;
 
-    const entity = await this.{{entityFile}}Repository.findOne({
-      where: { id },
-      {{#if hasRelations}}
-      relations: { {{#each relations}}{{this}}: true{{#unless @last}}, {{/unless}}{{/each}} },
-      {{/if}}
-    });
+    return await this.dataSource.transaction(async (manager) => {
+      const entity = await manager.findOne({{entityName}}, {
+        where: { id },
+        relations: { {{#each relations}}{{this}}: true{{#unless @last}}, {{/unless}}{{/each}} },
+      });
 
-    if (!entity) {
-      throw new NotFoundException('{{entityName}} not found');
-    }
+      if (!entity) {
+        throw new NotFoundException('{{entityName}} not found');
+      }
 
-    Object.assign(entity, rest);
+      Object.assign(entity, rest);
 
-    {{#each properties}}
-      {{#if (and isRelation (not isJoinColumn))}}
-        {{#if (or (eq relationType "ManyToOne") (and (eq relationType "OneToOne") isOwningRelation))}}
-    if ({{relationFieldName}}Id !== undefined) {
-      entity.{{relationFieldName}} = {{relationFieldName}}Id ? await this.{{relationFieldName}}Repository.findOneBy({ id: {{relationFieldName}}Id }) : null;
-    }
-        {{else if (or (eq relationType "OneToMany") (and (eq relationType "ManyToMany") isOwningRelation))}}
-    if ({{relationFieldName}}Ids !== undefined) {
-      entity.{{relationFieldName}} = {{relationFieldName}}Ids.length > 0 ? await this.{{relationFieldName}}Repository.findBy({ id: In({{relationFieldName}}Ids) }) : [];
-    }
+      {{#each properties}}
+        {{#if (and isRelation (not isJoinColumn))}}
+          {{#if (or (eq relationType "ManyToOne") (and (eq relationType "OneToOne") isOwningRelation))}}
+      if ({{relationFieldName}}Id !== undefined) {
+        entity.{{relationFieldName}} = {{relationFieldName}}Id ? await manager.findOneBy({{relatedEntity}}, { id: {{relationFieldName}}Id }) : null;
+      }
+          {{else if (or (eq relationType "OneToMany") (and (eq relationType "ManyToMany") isOwningRelation))}}
+      if ({{relationFieldName}}Ids !== undefined) {
+        entity.{{relationFieldName}} = {{relationFieldName}}Ids.length > 0 ? await manager.find({{relatedEntity}}, { where: { id: In({{relationFieldName}}Ids) } }) : [];
+      }
+          {{/if}}
         {{/if}}
-      {{/if}}
-    {{/each}}
+      {{/each}}
 
-    await this.{{entityFile}}Repository.save(entity);
-    return entity;
+      await manager.save(entity);
+      return entity;
+    });
     {{else}}
     await this.{{entityFile}}Repository.update(id, updateDto);
     return this.findOne(id);

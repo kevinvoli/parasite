@@ -10,12 +10,25 @@ import { {{relatedEntity}} } from "../../{{kebabCase relatedEntity}}/entities/{{
   {{/if}}
 {{/each}}
 
+{{#each enumTypes}}
+export enum {{enumName}} {
+  {{#each values}}
+  {{key}} = '{{value}}',
+  {{/each}}
+}
+
+{{/each}}
 @Entity("{{entityFile}}")
 export class {{entityName}} {
 {{#each properties}}
   {{#if isPrimary}}
+    {{#if isUuid}}
+  @PrimaryGeneratedColumn("uuid")
+  {{name}}: string;
+    {{else}}
   @PrimaryGeneratedColumn("increment")
   {{name}}: number;
+    {{/if}}
 
   {{else if isRelation}}
     {{#if (eq relationType "ManyToOne")}}
@@ -57,16 +70,24 @@ export class {{entityName}} {
       {{/if}}
     {{/if}}
 
+  {{else if isEnum}}
+  @Column({ type: 'enum', enum: {{enumName}}, nullable: {{#if isOptional}}true{{else}}false{{/if}} })
+  {{name}}: {{enumName}};
+
+  {{else if isUuid}}
+  @Column({ type: "uuid", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
+  {{name}}: string;
+
   {{else if (eq type "Date")}}
-    {{#if (eq name "created_at")}}
+    {{#if (isCreatedAt name)}}
   @CreateDateColumn({ type: "timestamp", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
   {{name}}: Date;
 
-    {{else if (eq name "updated_at")}}
+    {{else if (isUpdatedAt name)}}
   @UpdateDateColumn({ type: "timestamp", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
   {{name}}: Date;
 
-    {{else if (eq name "deleted_at")}}
+    {{else if (isDeletedAt name)}}
   @DeleteDateColumn({ type: "timestamp", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
   {{name}}: Date;
 
@@ -76,7 +97,7 @@ export class {{entityName}} {
     {{/if}}
 
   {{else}}
-  @Column({ type: "{{lowercase type}}", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
+  @Column({ type: "{{toSqlType type}}", nullable: {{#if isOptional}}true{{else}}false{{/if}} })
   {{name}}: {{type}};
   {{/if}}
 

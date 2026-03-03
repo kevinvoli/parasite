@@ -18,6 +18,9 @@ export interface EntityProperty {
   inverseSide?: string;
   inverseJoinColumnName?: string; // Name of the inverse join column for ManyToMany
   joinTableName?: string; // Name of the join table for ManyToMany
+  isUuid?: boolean;
+  isEnum?: boolean;
+  enumValues?: string[];
 }
 
 export interface ParsedEntity {

@@ -1,12 +1,12 @@
 import pg from "pg";
 import path from "path";
 import { ParsedEntity, EntityProperty } from "../types.js";
-import { camelCase, kebabCase, toPascalCase } from "../utils/string-formatters.js";
+import { camelCase, kebabCase, toPascalCase, toSingular } from "../utils/string-formatters.js";
 import { DatabaseScanner } from "./db-scanner.js";
 
 const { Client } = pg;
 
-function mapPostgresTypeToTS(pgType: string): string {
+export function mapPostgresTypeToTS(pgType: string): string {
   const type = pgType.toLowerCase();
   if (["integer", "bigint", "smallint", "numeric", "decimal", "real", "double precision", "money"].includes(type)) return "number";
   if (["character varying", "varchar", "character", "char", "text", "uuid"].includes(type)) return "string";
@@ -39,9 +39,22 @@ export class PostgresScanner implements DatabaseScanner {
       // First pass: populate entities with direct properties, ManyToOne and OneToOne
       for (const tableName of tableNames) {
         const columnsRes = await client.query(`
-          SELECT column_name, udt_name, is_nullable
+          SELECT column_name, udt_name, data_type, is_nullable
           FROM information_schema.columns
           WHERE table_name = $1 AND table_schema = 'public'`, [tableName]);
+
+        // Fetch enum values for USER-DEFINED types (PostgreSQL ENUMs)
+        const enumValuesMap: Record<string, string[]> = {};
+        for (const col of columnsRes.rows) {
+          if (col.data_type === "USER-DEFINED") {
+            const enumRes = await client.query(`
+              SELECT enumlabel FROM pg_enum
+              JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
+              WHERE pg_type.typname = $1
+              ORDER BY enumsortorder`, [col.udt_name]);
+            enumValuesMap[col.column_name] = enumRes.rows.map((r: any) => r.enumlabel);
+          }
+        }
 
         // Get ALL primary key columns (supports composite PKs)
         const pkRes = await client.query(`
@@ -79,7 +92,7 @@ export class PostgresScanner implements DatabaseScanner {
           const fk = fkRes.rows.find(fk => fk.column_name === col.column_name);
           if (fk) {
             const relatedEntity = toPascalCase(fk.foreign_table_name);
-            const relationName = camelCase(fk.foreign_table_name).replace(/s$/, "");
+            const relationName = toSingular(camelCase(fk.foreign_table_name));
             const isUniqueFk = uniqueColumnNames.has(col.column_name);
             const relationType = isUniqueFk ? "OneToOne" : "ManyToOne";
             properties.push({
@@ -98,15 +111,22 @@ export class PostgresScanner implements DatabaseScanner {
               joinColumnName: col.column_name,
             });
           } else {
+            const isUuid = col.udt_name === "uuid";
+            const isEnum = col.data_type === "USER-DEFINED" && enumValuesMap[col.column_name]?.length > 0;
+            const enumValues = isEnum ? enumValuesMap[col.column_name] : undefined;
+
             properties.push({
               name: camelCase(col.column_name),
-              type,
-              dtoType: type === "Date" ? "string" : type,
+              type: isEnum ? "string" : type,
+              dtoType: type === "Date" ? "string" : (isEnum ? "string" : type),
               isPrimary,
               isOptional,
               isRelation: false,
               isJoinColumn: false,
               joinColumnName: col.column_name,
+              isUuid,
+              isEnum,
+              enumValues,
             });
           }
         }
@@ -206,7 +226,7 @@ export class PostgresScanner implements DatabaseScanner {
 
               if (prop.relationType === "OneToOne") {
                 inverseRelationType = "OneToOne";
-                inversePropName = camelCase(otherTableName).replace(/s$/, "");
+                inversePropName = toSingular(camelCase(otherTableName));
                 inversePropType = otherEntity.name;
                 inverseIsOptional = prop.isOptional;
               } else if (prop.relationType === "ManyToOne") {

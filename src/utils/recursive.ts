@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs";
 
- function getAllTsFilesRecursively(dir: string): string[] {
+function getAllTsFilesRecursively(dir: string): string[] {
   let results: string[] = [];
 
   const list = fs.readdirSync(dir);
@@ -20,4 +20,4 @@ import fs from "fs";
   return results;
 }
 
-export default getAllTsFilesRecursively
+export default getAllTsFilesRecursively;

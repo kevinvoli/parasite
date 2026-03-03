@@ -1,7 +1,7 @@
 import { createConnection } from "mysql2/promise";
 import path from "path";
 import { ParsedEntity, EntityProperty } from "../types.js";
-import { camelCase, kebabCase, toPascalCase } from "../utils/string-formatters.js";
+import { camelCase, kebabCase, toPascalCase, toSingular } from "../utils/string-formatters.js";
 import { DatabaseScanner } from "./db-scanner.js";
 
 export function mapMySQLTypeToTS(mysqlType: string): string {
@@ -64,7 +64,7 @@ export class MySqlScanner implements DatabaseScanner {
         const fk = foreignKeys.find((fk: any) => fk.COLUMN_NAME === col.Field);
         if (fk) {
           const relatedEntity = toPascalCase(fk.REFERENCED_TABLE_NAME);
-          const relationName = camelCase(fk.REFERENCED_TABLE_NAME).replace(/s$/, "");
+          const relationName = toSingular(camelCase(fk.REFERENCED_TABLE_NAME));
           const isUniqueFk = uniqueColumnNames.includes(col.Field);
           const relationType = isUniqueFk ? "OneToOne" : "ManyToOne";
 
@@ -84,15 +84,25 @@ export class MySqlScanner implements DatabaseScanner {
             joinColumnName: col.Field,
           });
         } else {
+          const colTypeLower = col.Type.toLowerCase();
+          const isUuid = colTypeLower === "char(36)" || colTypeLower === "varchar(36)" && col.Field.toLowerCase().includes("uuid");
+          const isEnum = colTypeLower.startsWith("enum(");
+          const enumValues: string[] | undefined = isEnum
+            ? colTypeLower.slice(5, -1).split(",").map((v: string) => v.trim().replace(/'/g, ""))
+            : undefined;
+
           properties.push({
             name: camelCase(col.Field),
-            type,
-            dtoType: type === "Date" ? "string" : type,
+            type: isEnum ? "string" : type,
+            dtoType: type === "Date" ? "string" : (isEnum ? "string" : type),
             isPrimary,
             isOptional,
             isRelation: false,
             isJoinColumn: false,
             joinColumnName: col.Field,
+            isUuid,
+            isEnum,
+            enumValues,
           });
         }
       }
@@ -207,7 +217,7 @@ export class MySqlScanner implements DatabaseScanner {
 
             if (prop.relationType === "OneToOne") {
               inverseRelationType = "OneToOne";
-              inversePropName = camelCase(otherTableName).replace(/s$/, "");
+              inversePropName = toSingular(camelCase(otherTableName));
               inversePropType = otherEntity.name;
               inverseIsOptional = prop.isOptional;
             } else if (prop.relationType === "ManyToOne") {

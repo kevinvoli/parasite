@@ -22,7 +22,7 @@ export async function generateMissingCrudElements(entity: ParsedEntity, projectR
     module: path.join(baseDir, `${entityFile}.module.ts`),
     dtoCreate: path.join(baseDir, "dto", `create-${entityFile}.dto.ts`),
     dtoUpdate: path.join(baseDir, "dto", `update-${entityFile}.dto.ts`),
-     entitys: path.join(baseDir, "entities", `${entityFile}.entity.ts`)
+    entities: path.join(baseDir, "entities", `${entityFile}.entity.ts`)
   };
 
   const filesToGenerate: string[] = [];
@@ -31,7 +31,7 @@ export async function generateMissingCrudElements(entity: ParsedEntity, projectR
   if (!fileExists(expectedPaths.module)) filesToGenerate.push("module");
   if (!fileExists(expectedPaths.dtoCreate)) filesToGenerate.push("create-dto");
   if (!fileExists(expectedPaths.dtoUpdate)) filesToGenerate.push("update-dto");
-  if (!fileExists(expectedPaths.entitys)) filesToGenerate.push("entity");
+  if (!fileExists(expectedPaths.entities)) filesToGenerate.push("entity");
 
   if (filesToGenerate.length === 0) {
     console.log(`✅ Tous les fichiers CRUD pour ${entityName} existent déjà.`);

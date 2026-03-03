@@ -3,21 +3,17 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { {{entityName}}Service } from './{{entityFile}}.service';
 import { {{entityName}}Controller } from './{{entityFile}}.controller';
 import { {{entityName}} } from './entities/{{entityFile}}.entity';
-{{#if hasRelations}}
-  {{#each relations}}
-import { {{Capitalise this}} } from '../{{this}}/entities/{{this}}.entity';
-  {{/each}}
-{{/if}}
+{{#each relatedEntities}}
+import { {{name}} } from '../{{file}}/entities/{{file}}.entity';
+{{/each}}
 
 @Module({
     imports:[
         TypeOrmModule.forFeature([
         {{entityName}},
-        {{#if hasRelations}}
-          {{#each relations}}
-            {{Capitalise this}} ,
-          {{/each}}
-        {{/if}}
+        {{#each relatedEntities}}
+          {{name}},
+        {{/each}}
          ]),
       ],
   controllers: [{{entityName}}Controller],

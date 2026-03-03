@@ -6,39 +6,32 @@ import { generateCrudResources } from "./crud-generator.js";
 import { DatabaseScanner } from "./db-scanner.js";
 import { MySqlScanner } from "./mysql-scanner.js";
 import { PostgresScanner } from "./postgres-scanner.js";
+import { SQLiteScanner } from "./sqlite-scanner.js";
 import { kebabCase } from "../utils/string-formatters.js";
+import { addModuleToAppModule } from "../utils/app-module-updater.js";
 
-function isNestInstalled(): boolean {
-  try {
-    execSync("nest --version", { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-}
 
-function getDbScanner(dbUrl: string): DatabaseScanner {
+export function getDbScanner(dbUrl: string): DatabaseScanner {
   if (dbUrl.startsWith("mysql://")) {
     return new MySqlScanner();
   }
   if (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://")) {
     return new PostgresScanner();
   }
-  throw new Error(`Unsupported database type for URL: ${dbUrl}. Only mysql:// and postgres:// are supported.`);
+  if (dbUrl.startsWith("sqlite://")) {
+    return new SQLiteScanner();
+  }
+  throw new Error(`Unsupported database type for URL: ${dbUrl}. Only mysql://, postgres://, and sqlite:// are supported.`);
 }
 
-export async function generateFromDatabase(dbUrl: string, outputDir: string) {
+export async function generateFromDatabase(dbUrl: string, outputDir: string, options: { overwriteExisting?: boolean; templatesDir?: string; dryRun?: boolean; swagger?: boolean } = {}) {
   const projectPath = path.resolve(outputDir);
   const srcDir = path.join(projectPath, "src");
 
   // 1. Create NestJS project if it doesn't exist
   if (!fs.existsSync(projectPath)) {
-    if (!isNestInstalled()) {
-      console.error(chalk.red("❌ Le CLI NestJS n'est pas installé. Veuillez exécuter : npm i -g @nestjs/cli"));
-      process.exit(1);
-    }
     console.log(chalk.blue(`📦 Création du projet NestJS dans ${outputDir}...`));
-    execSync(`nest new ${outputDir} --skip-install`, { stdio: "inherit" });
+    execSync(`npx --yes @nestjs/cli new ${outputDir} --package-manager npm --skip-install`, { stdio: "inherit" });
   } else {
     console.log(chalk.yellow(`⚠️ Le dossier ${outputDir} existe déjà. Utilisation du projet existant.`));
   }
@@ -67,9 +60,23 @@ export async function generateFromDatabase(dbUrl: string, outputDir: string) {
           hasRelations: entity.properties.some(p => p.isRelation),
           optionalProperties: entity.properties.filter(p => p.isOptional),
           dateProperties: entity.properties.filter(p => p.type === "Date"),
+          overwriteExisting: options.overwriteExisting,
+          swagger: options.swagger,
         },
-        baseDir
+        baseDir,
+        undefined,
+        options.templatesDir,
+        options.dryRun
       );
+
+      if (!options.dryRun) {
+        const entityFile = kebabCase(entity.name);
+        await addModuleToAppModule(
+          path.join(srcDir, "app.module.ts"),
+          `${entity.name}Module`,
+          `./${entityFile}/${entityFile}.module`
+        );
+      }
     }
 
     console.log(chalk.green("\n✅ Génération terminée avec succès !"));

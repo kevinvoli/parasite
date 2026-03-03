@@ -1,32 +1,65 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+{{#if swagger}}
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+{{/if}}
 import { {{entityName}}Service } from './{{entityFile}}.service';
 import { Create{{entityName}}Dto } from './dto/create-{{entityFile}}.dto';
 import { Update{{entityName}}Dto } from './dto/update-{{entityFile}}.dto';
+import { PaginationDto } from './dto/pagination.dto';
 
+{{#if swagger}}
+@ApiTags('{{route}}')
+{{/if}}
 @Controller('{{route}}')
 export class {{entityName}}Controller {
   constructor(private readonly {{entityVar}}Service: {{entityName}}Service) {}
 
+  {{#if swagger}}
+  @ApiOperation({ summary: 'Créer un(e) {{entityName}}' })
+  @ApiResponse({ status: 201, description: '{{entityName}} créé(e) avec succès.' })
+  {{/if}}
   @Post()
   create(@Body() createDto: Create{{entityName}}Dto) {
     return this.{{entityVar}}Service.create(createDto);
   }
 
+  {{#if swagger}}
+  @ApiOperation({ summary: 'Lister tous les {{entityName}}s' })
+  @ApiResponse({ status: 200, description: 'Liste des {{entityName}}s.' })
+  {{/if}}
   @Get()
-  findAll() {
-    return this.{{entityVar}}Service.findAll();
+  findAll(@Query() pagination: PaginationDto) {
+    return this.{{entityVar}}Service.findAll(pagination);
   }
 
+  {{#if swagger}}
+  @ApiOperation({ summary: 'Obtenir un(e) {{entityName}} par ID' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: '{{entityName}} trouvé(e).' })
+  @ApiResponse({ status: 404, description: '{{entityName}} non trouvé(e).' })
+  {{/if}}
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.{{entityVar}}Service.findOne(+id);
   }
 
+  {{#if swagger}}
+  @ApiOperation({ summary: 'Mettre à jour un(e) {{entityName}}' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: '{{entityName}} mis(e) à jour.' })
+  @ApiResponse({ status: 404, description: '{{entityName}} non trouvé(e).' })
+  {{/if}}
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateDto: Update{{entityName}}Dto) {
     return this.{{entityVar}}Service.update(+id, updateDto);
   }
 
+  {{#if swagger}}
+  @ApiOperation({ summary: 'Supprimer un(e) {{entityName}}' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: '{{entityName}} supprimé(e).' })
+  @ApiResponse({ status: 404, description: '{{entityName}} non trouvé(e).' })
+  {{/if}}
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.{{entityVar}}Service.remove(+id);

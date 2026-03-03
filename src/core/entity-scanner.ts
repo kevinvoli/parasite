@@ -1,7 +1,7 @@
 import { Project, SyntaxKind } from "ts-morph";
 import path from "path";
 import fs from "fs";
-import getAllTsFilesRecursively from "../utils/reccurcive.js";
+import getAllTsFilesRecursively from "../utils/recursive.js";
 import { ParsedEntity, EntityProperty } from "../types.js";
 
 export async function scanEntities(entitiesDir: string): Promise<ParsedEntity[]> {
@@ -46,6 +46,7 @@ for (const filePath of files) {
       const isRelation = decoratorNames.some(d =>
         ["OneToMany", "ManyToOne", "OneToOne", "ManyToMany"].includes(d)
       );
+      const isOwningRelation = decoratorNames.includes("JoinColumn") || decoratorNames.includes("JoinTable");
       const relationType = decoratorNames.find(d =>
         ["OneToMany", "ManyToOne", "OneToOne", "ManyToMany"].includes(d)
       );
@@ -82,11 +83,11 @@ for (const filePath of files) {
         type,
         isPrimary,
         isRelation,
+        isOwningRelation: isRelation ? isOwningRelation : undefined,
         relationType: relationType as "OneToMany" | "ManyToOne" | "OneToOne" | "ManyToMany" | undefined,
         relatedEntity,
         dtoType,
         isOptional,
-    
       });
     }
 

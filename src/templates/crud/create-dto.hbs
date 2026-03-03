@@ -1,15 +1,25 @@
+{{#if hasValidatorImports}}
+import { {{#each validatorImports}}{{this}}{{#unless @last}}, {{/unless}}{{/each}} } from 'class-validator';
+{{/if}}
+{{#each enumTypes}}
+import { {{enumName}} } from '../entities/{{../entityFile}}.entity';
+{{/each}}
+
 export class Create{{entityName}}Dto {
   {{#each properties}}
     {{#unless isPrimary}}
       {{#unless isJoinColumn}}
         {{#if isRelation}}
           {{#if (or (eq relationType "ManyToOne") (and (eq relationType "OneToOne") isOwningRelation))}}
-  {{relationFieldName}}Id{{#if isOptional}}?{{/if}}: number;
+  {{#each validators}}{{this}}
+  {{/each}}{{relationFieldName}}Id{{#if isOptional}}?{{/if}}: number;
           {{else if (or (eq relationType "OneToMany") (and (eq relationType "ManyToMany") isOwningRelation))}}
-  {{relationFieldName}}Ids{{#if isOptional}}?{{/if}}: number[];
+  {{#each validators}}{{this}}
+  {{/each}}{{relationFieldName}}Ids{{#if isOptional}}?{{/if}}: number[];
           {{/if}}
         {{else}}
-  {{name}}{{#if isOptional}}?{{/if}}: {{dtoType}};
+  {{#each validators}}{{this}}
+  {{/each}}{{name}}{{#if isOptional}}?{{/if}}: {{#if isEnum}}{{enumName}}{{else}}{{dtoType}}{{/if}};
         {{/if}}
       {{/unless}}
     {{/unless}}
